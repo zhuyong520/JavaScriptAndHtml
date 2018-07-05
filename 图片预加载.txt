@@ -1,0 +1,26 @@
+//上传图片的fileinput
+$("#file1").change(function () {
+        $(".yulan_1").text("");
+        readAsDataURL("1")
+    })
+//进行预加载图片复給div下img显示
+function readAsDataURL(t) {
+    // 检查是否为图像类型
+    var ids = ".yulan_" + t;//img的父级div
+    var Fileids = "file" + t;//上传图片的fileinput框
+    var simpleFile = document.getElementById(Fileids).files[0];
+    if (!/image\/\w+/.test(simpleFile.type)) {
+        //alert("请确保文件类型为图像类型");
+        SimplePop.alert("请确保文件类型为图像类型");
+        return false;
+    }
+    var reader = new FileReader();
+    // 将文件以Data URL形式进行读入页面
+    reader.readAsDataURL(simpleFile);
+    reader.onload = function (e) {
+        console.log(this.result);
+        $(ids).empty();
+        //result.innerHTML = '<img src="' + this.result + '" alt=""/>';
+        $(ids).append('<img  src="' + this.result + '" />');
+    }
+}
