@@ -1,0 +1,248 @@
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Web;
+using System.Web.Script.Serialization;
+
+namespace ReagentShengYuWCF.Tool
+{
+    public class JSONHelper
+    {
+        /// <summary> 
+        /// 对象转JSON 
+        /// </summary> 
+        /// <param name="obj">对象</param> 
+        /// <returns>JSON格式的字符串</returns> 
+        public static string ObjectToJSON(object obj)
+        {
+            JavaScriptSerializer jss = new JavaScriptSerializer();
+            try
+            {
+                return jss.Serialize(obj);
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception("JSONHelper.ObjectToJSON(): " + ex.Message);
+            }
+        }
+
+        /// <summary> 
+        /// 数据表转键值对集合 www.2cto.com  
+        /// 把DataTable转成 List集合, 存每一行 
+        /// 集合中放的是键值对字典,存每一列 
+        /// </summary> 
+        /// <param name="dt">数据表</param> 
+        /// <returns>哈希表数组</returns> 
+        public static List<Dictionary<string, object>> DataTableToList(DataTable dt)
+        {
+            List<Dictionary<string, object>> list
+                 = new List<Dictionary<string, object>>();
+
+            foreach (DataRow dr in dt.Rows)
+            {
+                Dictionary<string, object> dic = new Dictionary<string, object>();
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    dic.Add(dc.ColumnName, dr[dc.ColumnName]);
+                }
+                list.Add(dic);
+            }
+            return list;
+        }
+
+        /// <summary> 
+        /// 数据集转键值对数组字典 
+        /// </summary> 
+        /// <param name="dataSet">数据集</param> 
+        /// <returns>键值对数组字典</returns> 
+        public static Dictionary<string, List<Dictionary<string, object>>> DataSetToDic(DataSet ds)
+        {
+            Dictionary<string, List<Dictionary<string, object>>> result = new Dictionary<string, List<Dictionary<string, object>>>();
+
+            foreach (DataTable dt in ds.Tables)
+                result.Add(dt.TableName, DataTableToList(dt));
+
+            return result;
+        }
+
+        /// <summary> 
+        /// 数据表转JSON 
+        /// </summary> 
+        /// <param name="dataTable">数据表</param> 
+        /// <returns>JSON字符串</returns> 
+        public static string DataTableToJSON(DataTable dt)
+        {
+            return ObjectToJSON(DataTableToList(dt));
+        }
+
+        /// <summary> 
+        /// JSON文本转对象,泛型方法 
+        /// </summary> 
+        /// <typeparam name="T">类型</typeparam> 
+        /// <param name="jsonText">JSON文本</param> 
+        /// <returns>指定类型的对象</returns> 
+        public static T JSONToObject<T>(string jsonText)
+        {
+            JavaScriptSerializer jss = new JavaScriptSerializer();
+            try
+            {
+                return jss.Deserialize<T>(jsonText);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("JSONHelper.JSONToObject(): " + ex.Message);
+            }
+        }
+
+        /// <summary> 
+        /// 将JSON文本转换为数据表数据 
+        /// </summary> 
+        /// <param name="jsonText">JSON文本</param> 
+        /// <returns>数据表字典</returns> 
+        public static Dictionary<string, List<Dictionary<string, object>>> TablesDataFromJSON(string jsonText)
+        {
+            return JSONToObject<Dictionary<string, List<Dictionary<string, object>>>>(jsonText);
+        }
+
+        /// <summary> 
+        /// 将JSON文本转换成数据行 
+        /// </summary> 
+        /// <param name="jsonText">JSON文本</param> 
+        /// <returns>数据行的字典</returns> 
+        public static Dictionary<string, object> DataRowFromJSON(string jsonText)
+        {
+            return JSONToObject<Dictionary<string, object>>(jsonText);
+        }
+
+        /// <summary>
+        /// Json串转成对象
+        /// </summary>
+        /// <param name="jsonString"></param>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static object JsonToObject(string jsonString, object obj)
+        {
+            //DataContractJsonSerializer serializer =
+            //     new DataContractJsonSerializer(obj.GetType());
+            //MemoryStream mStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+            //return serializer.ReadObject(mStream);
+
+            return JsonConvert.DeserializeObject(jsonString, obj.GetType());
+        }
+
+        public static T DeserializeObject<T>(string value)
+        {
+            return JsonConvert.DeserializeObject<T>(value);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        protected string GetJson(string url)
+        {
+            WebClient wc = new WebClient();
+            wc.Credentials = CredentialCache.DefaultCredentials;
+            wc.Encoding = Encoding.UTF8;
+            string returnText = wc.DownloadString(url);
+
+            if (returnText.Contains("errcode"))
+            {
+                //可能发生错误
+            }
+            //Response.Write(returnText);
+            return returnText;
+        }
+
+        public static string ObjectToJson<T>(T t)
+        {
+            using (MemoryStream ms = new MemoryStream())
+            {
+                DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T));
+                serializer.WriteObject(ms, t);
+                ms.Position = 0;
+                using (StreamReader reader = new StreamReader(ms))
+                {
+                    string json = reader.ReadToEnd();
+                    string p = @"\\/Date\((\d+)\+\d+\)\\/";
+                    MatchEvaluator evaluator = new MatchEvaluator(ConvertJsonDateToDateString);
+
+                    //对时间进行处理，需要引用System.Text.RegularExpressions;命名空间
+                    Regex reg = new Regex(p);
+                    json = reg.Replace(json, evaluator);
+
+                      string p2 = "null";
+                     Regex reg2 = new Regex(p2);
+                     MatchEvaluator evaluator2 = new MatchEvaluator(ConvertNullToJsonEmpty);
+                     json = reg2.Replace(json, evaluator2);
+                    return json;
+                }
+
+            }
+        }
+
+        public static T JsonToObject<T>(string json)
+        {
+            string p = @"\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}";
+            MatchEvaluator evaluator = new MatchEvaluator(ConvertDateStringToJsonDate);    //对时间进行处理
+            Regex reg = new Regex(p);
+            json = reg.Replace(json, evaluator);
+            using (MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(json)))
+            {
+                DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T));
+                T data = (T)serializer.ReadObject(ms);
+                return data;
+            }
+        }
+
+        /// <summary>
+        /// 将Json时间转换成时间字符
+        /// </summary>
+
+        private static string ConvertJsonDateToDateString(Match m)　　//对时间进行序列化处理
+        {
+            string result = string.Empty;
+            DateTime dt = new DateTime(1970, 1, 1);
+            dt = dt.AddMilliseconds(long.Parse(m.Groups[1].Value));
+            dt = dt.ToLocalTime();
+            result = dt.ToString("yyyy-MM-dd HH:mm:ss");
+            return result;
+        }
+
+        /// <summary>
+        /// 将时间字符转换成JSON时间
+        /// </summary>
+
+        private static string ConvertDateStringToJsonDate(Match m)
+        {
+            string result = string.Empty;
+            DateTime dt = DateTime.Parse(m.Groups[0].Value);
+            dt = dt.ToUniversalTime();
+            TimeSpan ts = dt - DateTime.Parse("1970-01-01");
+            result = string.Format("\\/Date({0}+0800)\\/", ts.TotalMilliseconds);
+            return result;
+        }
+
+
+
+        /// <summary>
+        /// 将时间字符转换成JSON时间
+        /// </summary>
+
+        private static string ConvertNullToJsonEmpty(Match m)
+        {
+          
+            return "\"\"";
+        }
+    }
+}
+
