@@ -1,0 +1,29 @@
+textare自适应高度
+    //textarea输入框高度随输入的内容自增/减长
+    $(document).on("input propertychange", "textarea", function (e) {
+        var target = e.target;
+
+        // 保存初始高度，之后需要重新设置一下初始高度，避免只能增高不能减低。           
+        var dh = $(target).attr('defaultHeight') || 0;
+        if (!dh) {
+            dh = target.clientHeight;
+            $(target).attr('defaultHeight', dh);
+        }
+
+        target.style.height = dh + 'px';
+        var pt = $(target).parent().parent().children()
+        $(target).parent().parent().children().css("padding-top", dh + "px");
+        //alert(dh);
+        var clientHeight = target.clientHeight;
+        var scrollHeight = target.scrollHeight;
+        if (clientHeight !== scrollHeight) {
+            target.style.height = scrollHeight + 10 + "px";
+            $(target).parent().parent().children().css("padding-top", scrollHeight / 2 + "px");
+            $(target).parent().css("padding-top", "8px");
+        }
+    });
+
+
+
+
+<textarea type="text" style="overflow: hidden;resize: none;" rows="1"></textarea>
