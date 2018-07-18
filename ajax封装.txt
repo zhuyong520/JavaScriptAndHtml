@@ -1,0 +1,89 @@
+function AjaxTest() {
+    var ajaxParameter = {};
+    ajaxParameter.id = "";
+    RequestAjax("QueryZuoYeList", function (status, result) {
+        if (status) {
+            var objData = result;
+        } else {
+            alert(result);
+        }
+    }, "Get", ajaxParameter);
+}
+
+//**AjaxAction:Ajax请求方法名
+//**AjaxParameter:请求页面参数
+//**AjaxType:请求类型Get Post 默认为Post
+//**AjaxUrl:请求页面URL
+//Parameters.DataType:返回数据类型 xml html script json text默认为text
+//Parameters.Async:是否异步 默认是
+function RequestAjax(AjaxAction, AjaxFunction, AjaxType, AjaxParameter, AjaxUrl, Pamameter) {
+    //开始时打开loading
+    MaskingLayerLoading(true);
+    if (AjaxUrl === undefined || AjaxUrl === null) {
+        AjaxUrl = "teacher_ajax.ashx";
+    }
+    if (AjaxType === undefined || AjaxType === null) {
+        AjaxType = "Get";
+    }
+    this.defaults = {
+        DataType: "json",
+        Async: true,
+    };
+    var Parameters = $.extend(this.defaults, Pamameter);
+    jQuery.ajax({
+        url: AjaxUrl + "?action=" + AjaxAction,
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        type: AjaxType,
+        async: Parameters.Async,
+        datatype: Parameters.DataType,
+        data: AjaxParameter == null ? "" : (typeof (AjaxParameter) === "object") ? JSON.stringify(AjaxParameter) : AjaxParameter.replace(/\+/g, "[*#*]"),
+        success: function (data, status) {
+            var data = JSON.parse(data);
+            if (data.code == "0") {
+                if (typeof (AjaxFunction) === "function") {
+                    AjaxFunction(true, data.result);
+                }
+            } else {
+                if (typeof (AjaxFunction) === "function") {
+                    AjaxFunction(false, data.message);
+                }
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            if (jqXHR.responseText == undefined) {
+                return;
+            }
+            if (typeof (Parameters.AjaxErrorFunction) === "function") {
+                alert(jqXHR, textStatus, errorThrown);
+            }
+            else {
+                try {
+                    /*弹出jqXHR对象的信息*/
+                    if (jqXHR.responseText != "") {
+                        alert("RequestAjax:" + jqXHR.responseText);
+                    }
+                } catch (Error) { }
+            }
+        },
+        //结束之后关闭loading
+        complete: function () {
+            MaskingLayerLoading(false);
+        }
+    })
+}
+//加载loading
+function MaskingLayerLoading(loadShow) {
+    if (loadShow) {
+        if ($('body').hasClass('class_loading')) {
+            $(".class_loading").show();
+        } else {
+            var html = '<div class="class_loading" style="width:100%;height:100%;position: absolute;top: 0;color: white;padding-top: 22%;z-index: 9999;">' +
+               '<div style="width: 350px; height: 30px;line-height: 29px;border-radius: 15px;background-color: #1c98e0; margin: auto;' +
+               ' color: white; font-size: 14px;z-index: 9999;position: relative;text-align: center;">加载中...</div><div style="width: 100%; height: 100%;position: absolute;' +
+               'background-color: black;top: 0;opacity: 0.2;z-index: 9998;"></div></div>';
+            $("body").append(html);
+        }
+    } else {
+        $(".class_loading").hide();
+    }
+}
