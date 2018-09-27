@@ -1,0 +1,65 @@
+ var canvas = document.createElement("canvas"); //创建一个canvas节点
+                var scale = 2; //定义任意放大倍数 支持小数
+                var width = $("#pdfContainer").width(); //获取dom 宽度
+                var height = $("#pdfContainer").height(); //获取dom 高度
+                canvas.width = width * scale; //定义canvas 宽度 * 缩放
+                canvas.height = height * scale; //定义canvas高度 *缩放
+
+                var content = canvas.getContext("2d");
+                content.scale(scale, scale); //获取context,设置scale
+                var rect = $("#pdfContainer").get(0).getBoundingClientRect();//获取元素相对于视察的偏移量
+                content.translate(-(rect.left+10), 0);
+                html2canvas($("#pdfContainer"), {
+                    dpi: window.devicePixelRatio * 2,
+                    scale: 2, // 添加的scale 参数
+                    canvas: canvas, //自定义 canvas
+                    // logging: true, //日志开关，便于查看html2canvas的内部执行流程
+                    width: width, //dom 原始宽度
+                    height: height,
+                    onrendered: function (canvas) {
+
+                        var contentWidth = width;
+                        var contentHeight = height;
+
+                        //一页pdf显示html页面生成的canvas高度;
+                        //  var pageHeight = contentWidth / 592.28 * 841.89;
+                        var pageHeight = 960;
+                        //未生成pdf的html页面高度
+                        var leftHeight = contentHeight;
+                        //pdf页面偏移
+                        var position = 0;
+                        //a4纸的尺寸[595.28,841.89]，html页面生成的canvas在pdf中图片的宽高
+                        var imgWidth = 595.28;
+                        var imgHeight = 592.28 / contentWidth * contentHeight;
+                        var context = canvas.getContext('2d');
+                        // 【重要】关闭抗锯齿
+                        context.mozImageSmoothingEnabled = false;
+                        context.webkitImageSmoothingEnabled = false;
+                        context.msImageSmoothingEnabled = false;
+                        context.imageSmoothingEnabled = false;
+                       // canvas.width = canvas.width / 2;
+                        var pageData = new Image();
+                       
+                        var pageData = canvas.toDataURL('image/jpeg', 1.0);
+                        pageData.width = canvas.width;
+                        pageData.height = canvas.height;
+                       // window.open(pageData);
+                        var pdf = new jsPDF('', 'pt', 'a4');
+                        //有两个高度需要区分，一个是html页面的实际高度，和生成pdf的页面高度(841.89)
+                        //当内容未超过pdf一页显示的范围，无需分页
+                        if (leftHeight < pageHeight) {
+                            pdf.addImage(pageData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                        } else {
+                            while (leftHeight > 0) {
+                                pdf.addImage(pageData, 'JPEG', 0, position, imgWidth, imgHeight)
+                                leftHeight -= pageHeight;
+                                position -= 841.89;
+                                //避免添加空白页
+                                if (leftHeight > 0) {
+                                    pdf.addPage();
+                                }
+                            }
+                        }
+                        pdf.save('test.pdf');
+                    }
+                })
